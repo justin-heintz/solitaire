@@ -1,201 +1,197 @@
-function drawPlots(where, noPlots){
-	for(var i = 0; i < noPlots; i++){
-		domElms[where].innerHTML += "<div class='plot' data-plot='"+i+"' ></div>";
-	}	
-}
-function drawCard(where, plot, card, cardIndex){ 
-	
-	const newNocde = document.createElement("div");
-	domElms[where].querySelector('[data-plot="'+plot+'"]' ).appendChild(newNocde);
-	newNocde.dataset.plot = plot;
-	newNocde.dataset.arr = where;
-	newPos = newNocde.getBoundingClientRect();
-	if(card.visible){
-		newNocde.classList.add("card", card.suit.color);
-		newNocde.innerHTML = card.suit.img + " "+ displayNo(card.number) +" "+ card.suit.img;		
-	}else{
-		newNocde.classList.add("card", "back");
-	}
-	
-	card.position.x = newPos.x;
-	card.position.y = newPos.y;
- 
-}
-function updateCardPos(){
-	
-}
-function GenCards(suit){
-	return (Array.from({length:13},(e,i)=>{
-		return {
-			cid: suit.sid + (i+1),
-			visible: false,
-			suit: suit,
-			number: (i+1),
-			moving: false,
-			position:{
-				x:0,
-				y:0
-			}
-		};
-	}));
-};
-function displayNo(no){
-	if(no == 1){ 
-		return "A";
-	}else if(no == 11){
-		return "J";
-	}else if(no == 12){
-		return "Q";
-	}else if(no == 13){
-		return "K";
-	}else{
-		return no;
-	}
-}
-function shuffle(arr){
-    var j, x, index;
-    for (index = arr.length - 1; index > 0; index--) {
-        j = Math.floor(Math.random() * (index + 1));
-        x = arr[index];
-        arr[index] = arr[j];
-        arr[j] = x;
-    }
-    return arr;
-}
-function mdArray(depth){//Make multi dimensional array
-	var arr = [];
-	for(var h = 0; h < depth; h++){
-		arr[h] = [];
-	}
-	return arr;
-}
-function reIndex(arr){
-	return Object.values(arr);
-}
-document.addEventListener("DOMContentLoaded", function() {
-	const suits = {
-		spade:{sid: 100, name:'spade', img:'♠',color:'black'}, 
-		club:{sid: 200, name:'club', img:'♣',color:'black'},
-		heart:{sid: 300, name:'heart', img:'♥',color:'red'},
-		diamond:{sid: 400, name:'diamond', img:'♦',color:'red'}
-	};
-	 
-	mouseHolding = false;
-	movingCard = '';
-	domElms = {
-		table: document.getElementById('table'),
-		draw: document.getElementById('draw'),
-		sorted: document.getElementById('sorted')
-	}
-	deckArrs = {
-		deck: shuffle( //generates all decks and cards then shuffles
-			[].concat( GenCards(suits.club), 
-			GenCards(suits.spade), 
-			GenCards(suits.heart), 
-			GenCards(suits.diamond) )
-		),
-		sorted: mdArray(4),
-		table: mdArray(7)
-	}
-	deckArrs['table'].forEach((el, i)=>{
-		for(var x = 0; x < (i+1); x++){
-			el.push( deckArrs['deck'].pop() );
-		}
-		el[el.length - 1].visible = true;
-	});	
+globalMoving = false;
+globalCard = false;
+gcs = [];
+globalOffset = {};
+globalOffsetOld = {};
+class card{
+	constructor(number, color, suit, visible = false ) {
+		this.number = number;
+		this.color = color;
+		this.suit = suit;
+		this.visible = visible;
+		this.posOld = {};
+		this.cardId = this.makeId();
+		this.el = this.createEl();
+		this.plot = -1;
+		this.plotOrder = -1;
+		this.draw();
 
-	/*Draws the cards in each area*/
-	drawPlots('table', 7);
-	drawPlots('draw', 1);
-	drawPlots('sorted', 4);
-
-	deckArrs['table'].forEach((plot, plotIndex)=>{
-		plot.forEach((card, cardIndex)=>{
-			drawCard('table', plotIndex, card, cardIndex);
-		});
-	});
-	
-	
-	cards = document.querySelectorAll('.card:not(.back)');
-	cards.forEach((card, i) => {
-		card.addEventListener('mousedown',(e) => {
-			movingCard = card;
-			movingCard.plot = card.dataset.plot;
-			movingCard.arr = card.dataset.arr;
-			movingCard.style.position = "absolute";
-			//movingCard.style.top = e.clientY;
-			//movingCard.style.left = e.clientX;
-			mouseHolding = true;
-		});
-	});
-	/**/
-});
-
-document.addEventListener("mousemove", (e) => {
-	if(mouseHolding && movingCard != ''){
-		movingCard.style.top  = e.clientY;
-		movingCard.style.left  = e.clientX;
-	}
-});
-
-document.addEventListener('mouseup',() => {
-	mouseHolding = false;
-	/*Loop over all plots where you can drop cards*/
-	var alltablePlots = document.querySelectorAll('#table .plot');
-	var allsortedPlots = document.querySelectorAll('#sorted .plot');
-	var cardPos = movingCard.getBoundingClientRect()
-	
-	/*come back to this for loop because the foreach cant be broken !!*/
-	/*
-	for(plot of alltablePlots ){
-		var plotPos = plot.getBoundingClientRect();
-		if(cardPos.x  >= plotPos.x
-		&& cardPos.x <= plotPos.x + plotPos.width 
-		&& cardPos.y >= plotPos.y
-		&& cardPos.y <= plotPos.y + plotPos.height 
-		){
-		//	console.log(plot,'in '+i);
-			console.log(plot)
-			break;
-		}
-	}*/
-	alltablePlots.forEach((plot,i)=>{
-		var plotPos = plot.getBoundingClientRect();
-
-		if(cardPos.x  >= plotPos.x
-		&& cardPos.x <= plotPos.x + plotPos.width 
-		&& cardPos.y >= plotPos.y
-		&& cardPos.y <= plotPos.y + plotPos.height 
-		){
-			
-		var tmpMovingCard = deckArrs[ movingCard.dataset.arr ][movingCard.dataset.plot][ deckArrs[movingCard.dataset.arr][movingCard.dataset.plot].length-1 ];
-		var tmpCard = deckArrs['table'][i][ deckArrs['table'][i].length-1 ];
-			
-			if(tmpMovingCard.suit.color == 'red' && tmpCard.suit.color == 'black'  ||
-			tmpMovingCard.suit.color == 'black' && tmpCard.suit.color == 'red'
-			){
-				if(tmpMovingCard.number + 1 == tmpCard.number){
-					document.querySelector('#table .plot[data-plot="'+movingCard.dataset.plot+'"]')
-					
-					var child = document.querySelector('#table .plot[data-plot="'+movingCard.dataset.plot+'"]').lastElementChild;
-					 
-					document.querySelector('#table .plot[data-plot="'+i+'"]').appendChild(child);
-					
-					deckArrs['table'][i].push( deckArrs[ movingCard.dataset.arr ][movingCard.dataset.plot].pop() );
-
-				}else{
-					console.log('1ignore');
+		this.el.addEventListener("mousedown", (e) => {
+			if(this.visible){
+				globalMoving = true;
+				globalCard = this;
+				globalOffsetOld = {
+					x:this.el.offsetLeft,
+					y:this.el.offsetTop
+				};
+				globalOffset = {
+					x:(this.el.offsetLeft - e.clientX),
+					y:(this.el.offsetTop - e.clientY)
 				}
 				
+				if(Object.keys(table[this.plot]).length != this.plotOrder){
+					Object.keys(table[this.plot]).forEach((k,i)=>{
+						if(i >= this.plotOrder){
+						gcs.push( table[this.plot][k].el);
+						console.log(k,i);
+						}
+					});
+					
+				}
+				console.log(/*Object.keys(table[this.plot]).length == this.plotOrder,*/ 'plot length: '+Object.keys(table[this.plot]).length , 'order: '+this.plotOrder)
 			}else{
-				console.log('2ignore');
+				if(this.plotOrder == Object.keys(table[this.plot]).length){
+					this.visible = true;
+					this.el.style.color = this.color;
+					this.el.innerHTML = this.suit + " " + this.converNo() + " " + this.suit;
+					this.el.classList.remove('back');					
+				
+				}
 			}
- 
+		});
+	}
+	makeId(length=5) {
+		var result = '';
+		var characters = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
+		var charactersLength = characters.length;
+		for ( var i = 0; i < length; i++ ) {
+			result += characters.charAt(Math.floor(Math.random() * charactersLength));
 		}
-		
+		return result;
+	}	
+	createEl(){
+		var el = document.createElement("div");
+		el.style.position = 'absolute';
+		el.style.top = 0;
+		el.style.left = 0
+		el.dataset.cardId = this.cardId;
+		el.classList.add('card');
+		return el;
+	}
+	converNo(){
+		if(this.number == 1){ 
+			return "A";
+		}else if(this.number == 11){
+			return "J";
+		}else if(this.number == 12){
+			return "Q";
+		}else if(this.number == 13){
+			return "K";
+		}else{
+			return this.number;
+		}
+	}
+	draw(where){
+		document.getElementById('board').appendChild(this.el);
+	}
+}
+function shuffle(ar){
+	var j, x, index;
+	for (index = ar.length - 1; index > 0; index--) {
+		j = Math.floor(Math.random() * (index + 1));
+		x = ar[index];
+		ar[index] = ar[j];
+		ar[j] = x;
+	}
+	return ar;
+}
+function overlaps(a, b) {
+	if (a.x >= b.x + b.width || b.x >= a.x + a.width ){ return false;}
+	if (a.y >= b.y + b.height || b.y >= a.y + a.height){ return false;}
+	return true;
+}
+function reIndex(){//reset plot zindex
+	table.forEach((plot,i)=>{
+		Object.keys(plot).forEach((key,i)=>{
+			plot[key].el.style.zIndex = i;
+			console.log(key,i)
+		});
 	});
+}
+document.addEventListener("DOMContentLoaded", function() {
+	deck = [];
+	draw = [];
+	table = [{},{},{},{},{},{},{},];
+	sorted = [[],[],[],[]];
+ 
+	for(i=1; i<=13; i++){ deck.push(new card(i,'Red','♥')); }
+	for(i=1; i<=13; i++){ deck.push(new card(i,'Red','♦')); }
+	for(i=1; i<=13; i++){ deck.push(new card(i,'Black','♠')); }
+	for(i=1; i<=13; i++){ deck.push(new card(i,'Black','♣')); }
+ 
+	deck = shuffle(deck);
 	
-	movingCard.style.position = "static";
-	deckArrs[movingCard.dataset.arr][ parseInt(movingCard.dataset.plot) ][parseInt(movingCard.dataset.cid)];
-	//console.log(movingCard.getBoundingClientRect());
+	for(plot=0; plot<7; plot++){
+		for(i=0; i<plot+1; i++){
+			var tmp = deck.pop()
+			table[plot][tmp.cardId] = tmp;
+			table[plot][tmp.cardId].el.style.top = `calc(50% +  ${20 * (i+1)}px )`;
+			table[plot][tmp.cardId].el.style.left = (150 * (plot+1));
+			table[plot][tmp.cardId].el.style.zIndex  = i;
+			table[plot][tmp.cardId].plot = plot;
+			table[plot][tmp.cardId].plotOrder = i+1;
+			if(i == plot){
+				table[plot][tmp.cardId].visible = true;
+				table[plot][tmp.cardId].el.style.color = table[plot][tmp.cardId].color;
+				table[plot][tmp.cardId].el.innerHTML = table[plot][tmp.cardId].suit + " " + table[plot][tmp.cardId].converNo() + " " + table[plot][tmp.cardId].suit;
+			}else{
+				table[plot][tmp.cardId].el.classList.add('back');
+			}
+		}
+	}	
 });
+document.addEventListener("mousemove", (e) => {
+	if(globalMoving){
+		globalCard.el.style.top  = (e.clientY + globalOffset.y);
+		globalCard.el.style.left = (e.clientX + globalOffset.x);
+		globalCard.el.style.zIndex = 100;
+		
+		gcs.forEach((el,i)=>{
+			el.style.top  = (e.clientY + globalOffset.y) +(20 *i);	
+			el.style.left = (e.clientX + globalOffset.x);
+			el.style.zIndex = 100+i;
+		});
+		
+	}
+});	
+document.addEventListener("mouseup", (e) => {
+	if(globalCard != false){
+		var globalCardRect = globalCard.el.getBoundingClientRect();
+		var resetPos = true;
+		
+		table.forEach((plot,i)=>{
+			Object.keys(plot).forEach((keys)=>{
+				var plotRect = plot[keys].el.getBoundingClientRect();
+				if(
+				plot[keys].visible && 
+				keys != globalCard.el.dataset.cardId &&
+				globalCard.color != plot[keys].color && 
+				overlaps(plotRect, globalCardRect) 
+				){
+					//console.log(plot[keys]);
+					if(globalCard.number == plot[keys].number-1 || 
+						globalCard.number == 13
+					){
+						resetPos = false;	
+						delete table[globalCard.plot][globalCard.cardId]
+						plot[globalCard.cardId] = globalCard;
+						plot[globalCard.cardId].plot = i;
+						plot[globalCard.cardId].plotOrder = Object.keys(plot).length;
+						plot[globalCard.cardId].el.style.top = `calc(50% +  ${20 * (Object.keys(plot).length)}px )`;
+						plot[globalCard.cardId].el.style.left = (150 * (i+1));
+						reIndex();
+					}
+				}
+
+			});
+		});
+		
+		if(resetPos){
+			globalCard.el.style.left = globalOffsetOld.x;
+			globalCard.el.style.top  = globalOffsetOld.y;	
+		}
+	}
+	globalMoving = false;
+	globalCard = false;
+	gcs = [];
+});	
